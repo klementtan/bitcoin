@@ -336,7 +336,9 @@ public:
         result.pushKV("difficulty", batch[ID_BLOCKCHAININFO]["result"]["difficulty"]);
         result.pushKV("chain", UniValue(batch[ID_BLOCKCHAININFO]["result"]["chain"]));
         if (!batch[ID_WALLETINFO]["result"].isNull()) {
+            result.pushKV("has_wallet", true);
             result.pushKV("keypoolsize", batch[ID_WALLETINFO]["result"]["keypoolsize"]);
+            result.pushKV("walletname", batch[ID_WALLETINFO]["result"]["walletname"]);
             if (!batch[ID_WALLETINFO]["result"]["unlocked_until"].isNull()) {
                 result.pushKV("unlocked_until", batch[ID_WALLETINFO]["result"]["unlocked_until"]);
             }
@@ -868,6 +870,86 @@ static void GetWalletBalances(UniValue& result)
 }
 
 /**
+ * ParseGetInfoResult takes in -getinfo result in UniValue object and parses it
+ * into a user friendly UniValue string to be printed on the console.
+ * @param[out] result  Reference to UniValue result containing the -getinfo output.
+ */
+static void ParseGetInfoResult(UniValue& result)
+{
+    if (!find_value(result, "error").isNull()) return;
+
+#ifndef WIN32
+    const std::string RESET = "\x1B[0m";
+    const std::string GREEN = "\x1B[32m";
+    const std::string BLUE = "\x1B[34m";
+    const std::string YELLOW = "\x1B[33m";
+    const std::string MAGENTA = "\x1B[35m";
+    const std::string CYAN = "\x1B[36m";
+#else
+    const std::string RESET = "";
+    const std::string GREEN = "";
+    const std::string BLUE = "";
+    const std::string YELLOW = "";
+    const std::string MAGENTA = "";
+    const std::string CYAN = "";
+#endif
+    const std::string BITCOIN_EMOJI = "\u20BF";
+
+    std::string result_string = strprintf("%sChain: %s%s\n", BLUE, result["chain"].getValStr(), RESET);
+    result_string += strprintf("Blocks: %s\n", result["blocks"].getValStr());
+    result_string += strprintf("Headers: %s\n", result["headers"].getValStr());
+    result_string += strprintf("Verification progress: %s\n", result["verificationprogress"].getValStr());
+    result_string += strprintf("Difficulty: %s\n\n", result["difficulty"].getValStr());
+
+    result_string += strprintf(
+        "%sNetwork: in %s, out %s, total %s%s\n",
+        GREEN,
+        result["connections"]["in"].getValStr(),
+        result["connections"]["out"].getValStr(),
+        result["connections"]["total"].getValStr(),
+        RESET);
+    result_string += strprintf("Version: %s\n", result["version"].getValStr());
+    result_string += strprintf("Time offset: %s\n", result["timeoffset"].getValStr());
+    result_string += strprintf("Proxy: %s \n", result["proxy"].getValStr());
+    result_string += strprintf("Relay fee: %s\n\n", result["relayfee"].getValStr());
+
+    if (!result["has_wallet"].isNull()) {
+        const std::string walletname = result["walletname"].getValStr();
+        result_string += strprintf("%sWallet: %s%s\n", MAGENTA, walletname.empty() ? "\"\"" : walletname, RESET);
+
+        result_string += strprintf("Keypool size: %s\n", result["keypoolsize"].getValStr());
+        if (!result["unlocked_until"].isNull()) {
+            result_string += strprintf("Unlocked until: %s\n", result["unlocked_until"].getValStr());
+        }
+        result_string += strprintf("Pay transaction fee: %s\n\n", result["paytxfee"].getValStr());
+    }
+    if (!result["balance"].isNull()) {
+        result_string += strprintf("%sBalance (%s)%s: %s\n\n", CYAN, BITCOIN_EMOJI, RESET, result["balance"].getValStr());
+    }
+
+    if (!result["balances"].isNull()) {
+        result_string += strprintf("%sBalances (%s)%s\n", CYAN, BITCOIN_EMOJI, RESET);
+
+        size_t max_balance_length{10};
+
+        for (const std::string& wallet : result["balances"].getKeys()) {
+            max_balance_length = std::max(result["balances"][wallet].getValStr().length(), max_balance_length);
+        }
+
+        for (const std::string& wallet : result["balances"].getKeys()) {
+            result_string += strprintf("%*s %s\n",
+               max_balance_length,
+               result["balances"][wallet].getValStr(),
+               wallet.empty() ? "\"\"" : wallet);
+        }
+        result_string += "\n";
+    }
+
+    result_string += strprintf("%sWarnings%s: %s", YELLOW, RESET, result["warnings"].getValStr());
+    result.setStr(result_string);
+}
+
+/**
  * Call RPC getnewaddress.
  * @returns getnewaddress response as a UniValue object.
  */
@@ -988,9 +1070,14 @@ static int CommandLineRPC(int argc, char *argv[])
             UniValue result = find_value(reply, "result");
             const UniValue& error = find_value(reply, "error");
             if (error.isNull()) {
-                if (gArgs.IsArgSet("-getinfo") && !gArgs.IsArgSet("-rpcwallet")) {
-                    GetWalletBalances(result); // fetch multiwallet balances and append to result
+
+                if (gArgs.GetBoolArg("-getinfo", false)) {
+                    if (!gArgs.IsArgSet("-rpcwallet")) {
+                        GetWalletBalances(result); // fetch multiwallet balances and append to result
+                    }
+                    ParseGetInfoResult(result);
                 }
+
                 ParseResult(result, strPrint);
             } else {
                 ParseError(error, strPrint, nRet);
