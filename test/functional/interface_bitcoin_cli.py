@@ -27,47 +27,7 @@ TOO_MANY_ARGS = 'error: too many arguments (maximum 2 for nblocks and maxtries)'
 WALLET_NOT_LOADED = 'Requested wallet does not exist or is not loaded'
 WALLET_NOT_SPECIFIED = 'Wallet file not specified'
 
-
-def cli_get_info_string_to_dict(cli_get_info_string):
-    # help method to convert human readable -getinfo into a dictionary
-    cli_get_info = {}
-    lines = cli_get_info_string.splitlines()
-    line_idx = 0
-    ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
-    while line_idx < len(lines):
-        # Remove ansi colour code
-        line = ansi_escape.sub('', lines[line_idx])
-        if "Balances" in line:
-            # When Balances appears in a line, all of the following line contains "balance: wallet" until an empty line
-            cli_get_info["Balances"] = {}
-            while line_idx < len(lines) and not (lines[line_idx + 1] == ''):
-                line_idx += 1
-                balance, wallet = lines[line_idx].strip().split(" ")
-                # Remove right justification padding
-                wallet = wallet.strip()
-                if wallet == '""':
-                    # Set default wallet("") to empty string
-                    wallet = ''
-                cli_get_info["Balances"][wallet] = balance.strip()
-        elif ": " in line:
-            key, value = line.split(": ")
-            if "Balance" in key:
-                # remove Bitcoin emoji from Balance
-                key = "Balance"
-            if key == 'Wallet' and value == '""':
-                # Set default wallet("") to empty string
-                value = ''
-            cli_get_info[key.strip()] = value.strip()
-        line_idx += 1
-    return cli_get_info
-
 def get_expected_get_info_output(network_info, blockchain_info, wallet_info, wallets, amounts):
-    RESET = "\x1B[0m";
-    GREEN = "\x1B[32m";
-    BLUE = "\x1B[34m";
-    YELLOW = "\x1B[33m";
-    MAGENTA = "\x1B[35m";
-    CYAN = "\x1B[36m";
     expected_get_info = textwrap.dedent('''\
         \x1B[34mChain: %s\x1b[0m
         Blocks: %d
@@ -87,8 +47,9 @@ def get_expected_get_info_output(network_info, blockchain_info, wallet_info, wal
             blockchain_info['verificationprogress'], blockchain_info['difficulty'],
             # Network info
             network_info['connections_in'], network_info['connections_out'], network_info['connections'],
-            network_info['version'], network_info['timeoffset'], network_info['networks'][0]['proxy'], network_info['relayfee']
-    ))
+            network_info['version'], network_info['timeoffset'], network_info['networks'][0]['proxy'],
+            network_info['relayfee']
+        ))
     if wallet_info:
         walletname = '""'
         if wallet_info['walletname']:
@@ -122,6 +83,8 @@ def get_expected_get_info_output(network_info, blockchain_info, wallet_info, wal
         expected_get_info += "\n"
     expected_get_info += textwrap.dedent("\x1b[33mWarnings\x1b[0m: %s" % (network_info["warnings"]))
     return expected_get_info
+
+
 class TestBitcoinCli(BitcoinTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
