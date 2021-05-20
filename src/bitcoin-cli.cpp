@@ -18,6 +18,7 @@
 #include <util/system.h>
 #include <util/translation.h>
 #include <util/url.h>
+#include <policy/feerate.h>
 
 #include <algorithm>
 #include <cmath>
@@ -909,20 +910,19 @@ static void ParseGetInfoResult(UniValue& result)
         result["connections"]["total"].getValStr(),
         RESET);
     result_string += strprintf("Version: %s\n", result["version"].getValStr());
-    result_string += strprintf("Time offset: %s\n", result["timeoffset"].getValStr());
-    result_string += strprintf("Proxy: %s\n", result["proxy"].getValStr());
-    result_string += strprintf("Relay fee: %s\n\n", result["relayfee"].getValStr());
+    result_string += strprintf("Time offset (s): %s\n", result["timeoffset"].getValStr());
+    result_string += strprintf("Proxy: %s \n", result["proxy"].getValStr());
+    result_string += strprintf("Relay fee (%\\/kB): %s\n\n", CURRENCY_UNIT, result["relayfee"].getValStr());
 
     if (!result["has_wallet"].isNull()) {
         const std::string walletname = result["walletname"].getValStr();
         result_string += strprintf("%sWallet: %s%s\n", MAGENTA, walletname.empty() ? "\"\"" : walletname, RESET);
 
         result_string += strprintf("Keypool size: %s\n", result["keypoolsize"].getValStr());
-        result_string += strprintf("Pay transaction fee: %s\n", result["paytxfee"].getValStr());
         if (!result["unlocked_until"].isNull()) {
             result_string += strprintf("Unlocked until: %s\n", result["unlocked_until"].getValStr());
         }
-        result_string += "\n";
+        result_string += strprintf("Pay transaction fee: %s\n\n", result["paytxfee"].getValStr());
     }
     if (!result["balance"].isNull()) {
         result_string += strprintf("%sBalance (%s)%s: %s\n\n", CYAN, BITCOIN_EMOJI, RESET, result["balance"].getValStr());

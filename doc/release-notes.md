@@ -141,6 +141,7 @@ Tools and Utilities
   useful to see if the node knows enough addresses in a network to use options
   like `-onlynet=<network>` or to upgrade to current and future Tor releases
   that support Tor v3 addresses only.  (#21595)
+- Update `-getinfo` to return data in user-friendly format that also reduces vertical space. (#21832)
 
 Wallet
 ------
