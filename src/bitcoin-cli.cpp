@@ -989,19 +989,22 @@ static void ParseGetInfoResult(UniValue& result)
 
     // proxies
     std::map<std::string, std::vector<std::string>> proxy_networks;
+    std::vector<std::string> ordered_proxies;
 
     for (const UniValue& network : result["networks"].getValues()) {
         const std::string proxy = network["proxy"].getValStr();
         if (proxy.empty()) continue;
+        // Add proxy to ordered_proxy if has not been processed
+        if (proxy_networks.find(proxy) == proxy_networks.end()) ordered_proxies.push_back(proxy);
 
         proxy_networks[proxy].push_back(network["name"].getValStr());
     }
 
-    std::vector<std::string> proxies;
-    for (const auto& [proxy, networks] : proxy_networks) {
-        proxies.emplace_back(strprintf("%s (%s)", proxy, Join(networks, ", ")));
+    std::vector<std::string> formatted_proxies;
+    for (const std::string& proxy : ordered_proxies) {
+        formatted_proxies.emplace_back(strprintf("%s (%s)", proxy, Join(proxy_networks.find(proxy)->second, ", ")));
     }
-    result_string += strprintf("Proxies: %s\n", proxies.empty() ? "n/a" : Join(proxies, ", "));
+    result_string += strprintf("Proxies: %s\n", formatted_proxies.empty() ? "n/a" : Join(formatted_proxies, ", "));
 
     result_string += strprintf("Min tx relay fee rate (%s/kvB): %s\n\n", CURRENCY_UNIT, result["relayfee"].getValStr());
 
