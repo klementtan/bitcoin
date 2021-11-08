@@ -147,4 +147,46 @@ BOOST_AUTO_TEST_CASE(siphash)
     }
 }
 
+BOOST_AUTO_TEST_CASE(span) {
+  // Check AsBytes
+  std::vector<uint32_t> const_uint32 = {0xddccbbaa, 0x44332211};
+  Span<uint32_t> const_uint32_span(const_uint32);
+  Span<const std::byte> const_uint32_byte_span = AsBytes(const_uint32_span);
+  BOOST_CHECK_EQUAL(std::to_integer<uint8_t>(const_uint32_byte_span[0]), std::uint8_t{0xaa});
+  BOOST_CHECK_EQUAL(std::to_integer<uint8_t>(const_uint32_byte_span[1]), std::uint8_t{0xbb});
+  BOOST_CHECK_EQUAL(std::to_integer<uint8_t>(const_uint32_byte_span[2]), std::uint8_t{0xcc});
+  BOOST_CHECK_EQUAL(std::to_integer<uint8_t>(const_uint32_byte_span[3]), std::uint8_t{0xdd});
+  BOOST_CHECK_EQUAL(std::to_integer<uint8_t>(const_uint32_byte_span[4]), std::uint8_t{0x11});
+  BOOST_CHECK_EQUAL(std::to_integer<uint8_t>(const_uint32_byte_span[5]), std::uint8_t{0x22});
+  BOOST_CHECK_EQUAL(std::to_integer<uint8_t>(const_uint32_byte_span[6]), std::uint8_t{0x33});
+  BOOST_CHECK_EQUAL(std::to_integer<uint8_t>(const_uint32_byte_span[7]), std::uint8_t{0x44});
+
+  // Check AsWriteableBytes
+  std::vector<uint32_t> writeable_uint32 = {0xddccbbaa, 0x44332211};
+  Span<uint32_t> writeable_int32_span(writeable_uint32);
+  Span<std::byte> writeable_uint32_byte_span = AsWriteableBytes(writeable_int32_span);
+  writeable_uint32_byte_span[0] = std::byte{0x66};
+  writeable_uint32_byte_span[4] = std::byte{0x77};
+  std::vector<uint32_t> expected_writeable_uint32 = {0xddccbb66, 0x44332277};
+  BOOST_CHECK_EQUAL(writeable_uint32[0], expected_writeable_uint32[0]);
+  BOOST_CHECK_EQUAL(writeable_uint32[1], expected_writeable_uint32[1]);
+
+  // Check MakeByteSpan
+  std::string const_string = "foobar";
+  Span<const std::byte> byte_span_char = MakeByteSpan(const_string);
+  BOOST_CHECK_EQUAL(std::to_integer<int>(byte_span_char[0]), 'f');
+  BOOST_CHECK_EQUAL(std::to_integer<int>(byte_span_char[1]), 'o');
+  BOOST_CHECK_EQUAL(std::to_integer<int>(byte_span_char[2]), 'o');
+  BOOST_CHECK_EQUAL(std::to_integer<int>(byte_span_char[3]), 'b');
+  BOOST_CHECK_EQUAL(std::to_integer<int>(byte_span_char[4]), 'a');
+  BOOST_CHECK_EQUAL(std::to_integer<int>(byte_span_char[5]), 'r');
+  BOOST_CHECK_EQUAL(std::to_integer<int>(byte_span_char[6]), '\0');
+
+  // Check MakeWriteableByteSpan
+  std::string writeable_string = "foobar";
+  Span<std::byte> writeable_byte_span_char = MakeWriteableByteSpan(writeable_string);
+  writeable_byte_span_char[0] = std::byte{'b'};
+  BOOST_CHECK_EQUAL(writeable_string, "boobar");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
